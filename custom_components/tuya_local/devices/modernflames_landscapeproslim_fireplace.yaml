@@ -162,9 +162,13 @@ entities:
     translation_key: flame
     category: config
     dps:
-      - id: 1
-        type: boolean
-        name: switch
+      - id: 101
+        name: brightness
+        type: hex
+        mask: "000000000000FF"
+        range:
+          min: 0
+          max: 100
       - id: 101
         name: rgbhsv
         type: hex
@@ -194,9 +198,13 @@ entities:
     translation_key: embers
     category: config
     dps:
-      - id: 1
-        type: boolean
-        name: switch
+      - id: 102
+        name: brightness
+        type: hex
+        mask: "000000000000FF"
+        range:
+          min: 0
+          max: 100
       - id: 102
         name: rgbhsv
         type: hex
@@ -227,9 +235,13 @@ entities:
     icon: "mdi:spotlight-beam"
     category: config
     dps:
-      - id: 1
-        type: boolean
-        name: switch
+      - id: 103
+        name: brightness
+        type: hex
+        mask: "000000000000FF"
+        range:
+          min: 0
+          max: 100
       - id: 103
         name: rgbhsv
         type: hex
