@@ -402,3 +402,71 @@ async def test_rgbhsv_invalid_colour_does_not_break_state_or_turn_on(
     dps["1"] = False
     await light.async_turn_on(hs_color=(0, 100), brightness=255)
     mock_device.async_set_properties.assert_called_once_with({"1": True})
+
+
+def _packed_rgbhsv_light(dps):
+    """A light whose brightness is the V byte packed inside its rgbhsv dp."""
+    mock_device = AsyncMock()
+    mock_device.get_property = Mock()
+    mock_device.get_property.side_effect = lambda arg: dps[arg]
+    config = TuyaEntityConfig(
+        Mock(),
+        {
+            "entity": "light",
+            "dps": [
+                {
+                    "id": "101",
+                    "name": "brightness",
+                    "type": "hex",
+                    "mask": "000000000000FF",
+                    "range": {"min": 0, "max": 100},
+                },
+                {
+                    "id": "101",
+                    "name": "rgbhsv",
+                    "type": "hex",
+                    "format": [
+                        {"name": "r", "bytes": 1},
+                        {"name": "g", "bytes": 1},
+                        {"name": "b", "bytes": 1},
+                        {"name": "h", "bytes": 2, "range": {"min": 0, "max": 360}},
+                        {"name": "s", "bytes": 1, "range": {"min": 0, "max": 100}},
+                        {"name": "v", "bytes": 1, "range": {"min": 0, "max": 100}},
+                    ],
+                },
+            ],
+        },
+    )
+    return mock_device, TuyaLocalLight(mock_device, config)
+
+
+@pytest.mark.asyncio
+async def test_packed_rgbhsv_turn_off_zeroes_rgb_and_v():
+    """Turning off clears the rgb bytes too, keeping hue and saturation"""
+    dps = {"101": "ff6e5400094364"}
+    mock_device, light = _packed_rgbhsv_light(dps)
+
+    assert light.is_on is True
+    await light.async_turn_off()
+    mock_device.async_set_properties.assert_called_once_with({"101": "00000000094300"})
+
+
+@pytest.mark.asyncio
+async def test_packed_rgbhsv_turn_off_when_off_does_nothing():
+    """Turning off an already off light sends nothing"""
+    dps = {"101": "00000000094300"}
+    mock_device, light = _packed_rgbhsv_light(dps)
+
+    assert light.is_on is False
+    await light.async_turn_off()
+    mock_device.async_set_properties.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_packed_rgbhsv_turn_on_restores_rgb():
+    """Turning on from off restores the rgb bytes from hue and saturation"""
+    dps = {"101": "00000000094300"}
+    mock_device, light = _packed_rgbhsv_light(dps)
+
+    await light.async_turn_on()
+    mock_device.async_set_properties.assert_called_once_with({"101": "ff6e5400094364"})

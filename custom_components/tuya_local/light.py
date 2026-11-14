@@ -320,6 +320,17 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
         settings = {}
         color_mode = None
         _LOGGER.debug("Light turn_on: %s", params)
+        if (
+            self._rgbhsv_dps
+            and self._brightness_dps
+            and self._brightness_dps.id == self._rgbhsv_dps.id
+            and not self.is_on
+            and ATTR_HS_COLOR not in params
+            and ATTR_COLOR_TEMP_KELVIN not in params
+            and ATTR_WHITE not in params
+        ):
+            # Brightness packed in rgbhsv: restore full colour on turn on
+            params = {**params, ATTR_HS_COLOR: self.hs_color or (0, 0)}
         if self._color_mode_dps and ATTR_WHITE in params:
             if self.color_mode != ColorMode.WHITE:
                 color_mode = ColorMode.WHITE
@@ -593,6 +604,15 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
         if self._switch_dps and not self._switch_dps.readonly:
             _LOGGER.info("%s turning light off", self._config.config_id)
             await self._switch_dps.async_set_value(self._device, False)
+        elif (
+            self._rgbhsv_dps
+            and self._brightness_dps
+            and self._brightness_dps.id == self._rgbhsv_dps.id
+        ):
+            # Brightness packed in rgbhsv: zero r,g,b and v together,
+            # as some zones light from the rgb bytes alone
+            if self.is_on:
+                await self.async_turn_on(**{ATTR_BRIGHTNESS: 0})
         elif self._brightness_dps:
             _LOGGER.info(
                 "%s turning light off by setting brightness to 0",
